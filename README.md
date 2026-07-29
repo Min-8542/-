@@ -16,7 +16,7 @@
 
 | 4. 경로 안내 결과 | 5. 건물 정보 | 6. 편의시설 정보 |
 | :---: | :---: | :---: |
-| <img src="https://github.com/user-attachments/assets/190476ac-98b9-4049-9274-2eada7fc7c73" width="220" alt="경로 안내 결과 화면"> | <img src="https://github.com/user-attachments/assets/3ea5b036-6267-421b-ab9c-2a26abf52940" width="220" alt="건물 정보 화면"> | <img src="https://github.com/user-attachments/assets/baf27dc3-cad9-41b6-9864-34d3d4e4cae8" width="220" alt="편의시설 정보 화면"> |
+| <img src="https://github.com/user-attachments/assets/190476ac-98b9-4049-9274-2eada7fc7c73" width="220" alt="경로 안내 결과 화면"> | <img src="https://github.com/user-attachments/assets/5ee55480-51a6-4f37-a99b-20fccfb1547f" width="220" alt="건물 정보 화면"> | <img src="https://github.com/user-attachments/assets/baf27dc3-cad9-41b6-9864-34d3d4e4cae8" width="220" alt="편의시설 정보 화면"> |
 
 ### ⚠️ Disclaimer 
 본 웹사이트는 명지대학교 학생이 개인적으로 제작한 **비공식 서비스**이며, 명지대학교 공식 기관과 무관합니다.
@@ -28,3 +28,8 @@
 ### 🔒 Copyright & License
 © 2026 Min-8542. All rights reserved.
 본 프로젝트의 코드, 디자인 및 콘텐츠의 무단 복제, 배포 및 전재를 금합니다.
+
+
+<img width="487" height="786" alt="띵지5" src= />
+
+
