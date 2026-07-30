@@ -1,6 +1,6 @@
 # 🧭 띵지네비 
  명지대학교 자연캠퍼스 비공식 건물 & 강의실 안내 웹서비스입니다.  
-**서비스 바로가기:** [https://min-8542.github.io/-/]
+**서비스 바로가기:** [https://min-8542.github.io/campus-navi/]
 ---
 
 ## ✨ Key Features 
