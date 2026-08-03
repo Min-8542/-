@@ -414,10 +414,6 @@
 
 <script>
 // ---------- 건물 코드 매핑 (Y번호 -> 건물명) : 공식 안내판 기준 ----------
-// img: null이면 사진 미등록 상태 -> 준비중 placeholder 표시.
-// lat/lng: 정강민 님이 제공한 실제 좌표 반영 완료.
-// ground: 지상 층수, basement: 지하 층수(없으면 0), floorInfo가 null이면 층수 정보 없음(검증 생략)
-// 제1공학관은 공식 안내판에도 코드가 비어있어(Y_) → Y0으로 확정 반영.
 const buildingCodes = {
   0:  { name:"제1공학관",             lat:37.22248, lng:127.18710, img:null, ground:6, basement:0 },
   1:  { name:"학생회관",               lat:37.22338, lng:127.18723, img:null, ground:5, basement:1 },
@@ -451,33 +447,29 @@ const buildingCodes = {
   35: { name:"생활관 복지동(B동)",     lat:37.22375, lng:127.18319, img:null, ground:null, basement:null },
 };
 
-// 강의실 코드 파싱 대상은 아니지만 건물정보에 표시할 부속시설(운동장/야외시설 등)
 const facilitySpots = {
   A: "대운동장", B: "선수전용테니스장", C: "소운동장", D: "테니스장", E: "실내테니스장",
   F: "야외음악당", G: "백마상", H: "학생테니스장", I: "야외농구장", J: "풋살장", K: "통학버스승강장",
 };
 
-// 경로안내(자동완성/거리계산 + 네이버 지도 연동)용 건물 목록으로 변환
 const buildings = Object.entries(buildingCodes).map(([code, b]) => ({
   id: `Y${code}`, code: Number(code), name: b.name, lat: b.lat, lng: b.lng, img: b.img
 }));
 const findBuilding = id => buildings.find(b => b.id === id);
 
-// ---------- 강의실 코드 파싱: Y + 건물번호 + 층(1자리) + 호실(2자리) ----------
 function parseRoomCode(raw){
   const code = raw.trim().toUpperCase().replace(/\s/g, '');
   const m = code.match(/^Y?(\d{4,5})$/);
   if(!m) return null;
   const digits = m[1];
-  const roomPart = digits.slice(-3);          // 뒤 3자리 = 층(1) + 호실(2)
-  const buildingNum = parseInt(digits.slice(0, -3), 10); // 나머지 = 건물번호
+  const roomPart = digits.slice(-3);
+  const buildingNum = parseInt(digits.slice(0, -3), 10);
   const b = buildingCodes[buildingNum];
   if(!b) return null;
   const floorDigit = parseInt(roomPart[0], 10);
   const roomNum = roomPart.slice(1);
   const floorLabel = floorDigit === 0 ? "지하 1층" : `${floorDigit}층`;
 
-  // 층수 범위 검증 (층수 정보가 있는 건물만)
   if(b.ground !== null && b.ground !== undefined){
     const outOfRange = floorDigit === 0
       ? (b.basement || 0) < 1
@@ -492,11 +484,10 @@ function toggleAmenity(){
   const panel = document.getElementById('amenityPanel');
   const buildingPanel = document.getElementById('buildingInfoPanel');
   const isOpening = (panel.style.display === 'none' || !panel.style.display);
-  buildingPanel.style.display = 'none'; // 건물정보는 항상 닫기
+  buildingPanel.style.display = 'none';
   panel.style.display = isOpening ? 'block' : 'none';
 }
 
-// ---------- 건물정보(학과/특징 소개) ----------
 const buildingInfo = {
   0:  { dept:"스마트시스템공과대학 [기계시스템공학부 - 기계공학전공] (화학공학전공 실험실 일부 공유)",
         desc:"기계공학과의 본거지이자 학과 사무실이 위치한 곳으로, 전통적인 중공업 계열 실험과 화학공학 연구실이 함께 사용하는 다소 연식이 있는 공학동" },
@@ -552,7 +543,7 @@ function toggleBuildingInfo(){
   const panel = document.getElementById('buildingInfoPanel');
   const amenityPanel = document.getElementById('amenityPanel');
   const isOpening = (panel.style.display === 'none' || !panel.style.display);
-  amenityPanel.style.display = 'none'; // 편의시설은 항상 닫기
+  amenityPanel.style.display = 'none';
   panel.style.display = isOpening ? 'block' : 'none';
   if(isOpening) renderBuildingInfo();
 }
@@ -604,10 +595,12 @@ function searchRoom(){
   const parsed = parseRoomCode(val);
   if(!parsed){
     box.innerHTML = `<div class="empty-msg">'${val}' 형식을 인식하지 못했어요. 예: 9035 (건물번호+층+호실, 숫자만)</div>`;
+    gtag('event', 'search_room', { room_number: val, result: 'invalid_format' });
     return;
   }
   if(parsed.outOfRange){
     box.innerHTML = `<div class="empty-msg">⚠️ 강의실 번호를 다시 확인해주세요! (${parsed.buildingName}에는 ${parsed.floorLabel}이 없어요)</div>`;
+    gtag('event', 'search_room', { room_number: val, result: 'out_of_range', building: parsed.buildingName });
     return;
   }
 
@@ -622,6 +615,9 @@ function searchRoom(){
       <span class="badge">층 <b>${parsed.floorLabel}</b></span>
       <span class="badge">호실 <b>${parsed.roomNum}호</b></span>
     </div>`;
+
+  gtag('event', 'search_room', { room_number: val, result: 'success', building: parsed.buildingName, floor: parsed.floorLabel });
+  gtag('event', 'view_result', { building: parsed.buildingName, floor: parsed.floorLabel, room_number: parsed.roomNum });
 }
 
 setupAutocomplete('fromInput', 'fromSuggest', 'fromBuildingId');
@@ -630,13 +626,11 @@ function getMatches(query){
   const q = query.trim();
   if(!q) return [];
   const items = [];
-  // 강의실 코드로 매칭 -> 해당 건물
   const parsed = parseRoomCode(q);
   if(parsed && !parsed.outOfRange){
     const b = buildings.find(bb => bb.name === parsed.buildingName);
     if(b) items.push({ id:b.id, value:b.name, label:`${parsed.raw} · ${parsed.floorLabel} ${parsed.roomNum}호 → ${b.name}` });
   }
-  // 건물명으로 부분 일치
   const ql = q.toLowerCase();
   buildings.forEach(b=>{
     if(b.name.toLowerCase().includes(ql) && !items.find(it=>it.id===b.id)){
@@ -652,7 +646,7 @@ function setupAutocomplete(inputId, listId, hiddenId){
   const hidden = document.getElementById(hiddenId);
 
   input.addEventListener('input', ()=>{
-    hidden.value = ''; // 재선택 전까지 확정 안 됨
+    hidden.value = '';
     const items = getMatches(input.value);
     list.innerHTML = '';
     if(input.value.trim() === ''){ list.style.display = 'none'; return; }
@@ -665,7 +659,7 @@ function setupAutocomplete(inputId, listId, hiddenId){
       const div = document.createElement('div');
       div.className = 'suggest-item';
       div.textContent = it.label;
-      div.onmousedown = (e)=>{ e.preventDefault(); }; // blur 전에 클릭 인식되게
+      div.onmousedown = (e)=>{ e.preventDefault(); };
       div.onclick = ()=>{
         input.value = it.value;
         hidden.value = it.id;
@@ -697,7 +691,6 @@ function calcRoute(){
   let toId = document.getElementById('toBuildingId').value;
   const box = document.getElementById('routeResult');
 
-  // 자동완성에서 클릭 안 하고 직접 입력만 한 경우, 입력값으로 건물명 매칭 시도
   if(!fromId){
     const typed = document.getElementById('fromInput').value.trim().toLowerCase();
     const guess = buildings.find(b => b.name.toLowerCase() === typed)
@@ -716,7 +709,7 @@ function calcRoute(){
     return;
   }
   if(fromId===toId){ box.innerHTML='<div class="empty-msg">출발지와 도착지가 같아요.</div>'; return; }
-  const DETOUR_FACTOR = 1.3; // 직선거리 대비 실제 도보 이동거리 보정계수
+  const DETOUR_FACTOR = 1.3;
   const from=findBuilding(fromId), to=findBuilding(toId);
   const straightDist=distanceMeters(from.lat,from.lng,to.lat,to.lng);
   const dist=straightDist*DETOUR_FACTOR;
@@ -728,6 +721,8 @@ function calcRoute(){
       <div class="meta">${from.name} → ${to.name}<br>약 ${Math.round(dist)}m · 추정치</div>
     </div>
     <a class="link-btn" href="${naverUrl}" target="_blank" rel="noopener">네이버 지도에서 정확한 길찾기</a>`;
+
+  gtag('event', 'calc_route', { from: from.name, to: to.name, distance_m: Math.round(dist), walk_minutes: walkMinutes });
 }
 
 function goToRoute(){
