@@ -357,7 +357,7 @@
             <div class="amenity-title">🏪 편의점</div>
             <ul>
               <li><b>세븐일레븐</b> — 명진당 지하 1층, 학생회관 1층, 명덕관 1층, 함박관 3층</li>
-              <li><b>이마트24</b> — 복지동(기숙사 근처)</li>
+              <li><b>이마트24</b> — 복지동(기숙사 근처), 제3공학관 지하 1층</li>
             </ul>
           </div>
 
@@ -714,15 +714,44 @@ function calcRoute(){
   const straightDist=distanceMeters(from.lat,from.lng,to.lat,to.lng);
   const dist=straightDist*DETOUR_FACTOR;
   const walkMinutes=Math.max(1, Math.round(dist/67));
-  const naverUrl=`https://map.naver.com/v5/directions/${from.lng},${from.lat},${encodeURIComponent(from.name)}/${to.lng},${to.lat},${encodeURIComponent(to.name)}/-/walk`;
+  const naverAppUrl=`nmap://route/walk?slat=${from.lat}&slng=${from.lng}&sname=${encodeURIComponent(from.name)}&dlat=${to.lat}&dlng=${to.lng}&dname=${encodeURIComponent(to.name)}&appname=mju.navi.web`;
+  const naverWebUrl=`https://map.naver.com/v5/directions/${from.lng},${from.lat},${encodeURIComponent(from.name)}/${to.lng},${to.lat},${encodeURIComponent(to.name)}/-/walk`;
+  window._lastNaverAppUrl = naverAppUrl;
+  window._lastNaverWebUrl = naverWebUrl;
   box.innerHTML = `
     <div class="route-result">
       <div class="time">${walkMinutes}<small>분</small></div>
       <div class="meta">${from.name} → ${to.name}<br>약 ${Math.round(dist)}m · 추정치</div>
     </div>
-    <a class="link-btn" href="${naverUrl}" target="_blank" rel="noopener">네이버 지도에서 정확한 길찾기</a>`;
+    <a class="link-btn" href="#" onclick="openNaverMap(); return false;">네이버 지도에서 정확한 길찾기</a>`;
 
   gtag('event', 'calc_route', { from: from.name, to: to.name, distance_m: Math.round(dist), walk_minutes: walkMinutes });
+}
+
+// 네이버 지도 '앱'으로 우선 연결 시도 -> 앱이 없거나(또는 인앱 브라우저 제한 등으로) 전환이 안 되면
+// 일정 시간 후 자동으로 웹(map.naver.com) 버전으로 이동
+function openNaverMap(){
+  const appUrl = window._lastNaverAppUrl;
+  const webUrl = window._lastNaverWebUrl;
+  if(!appUrl || !webUrl) return;
+
+  const clickedAt = Date.now();
+  let fallbackTriggered = false;
+
+  // 페이지가 백그라운드로 전환되면(=앱으로 전환 성공) 폴백 취소
+  const onVisibilityChange = ()=>{
+    if(document.hidden) fallbackTriggered = true;
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
+  window.location.href = appUrl;
+
+  setTimeout(()=>{
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    if(!fallbackTriggered && Date.now() - clickedAt < 2500){
+      window.location.href = webUrl;
+    }
+  }, 1200);
 }
 
 function goToRoute(){
